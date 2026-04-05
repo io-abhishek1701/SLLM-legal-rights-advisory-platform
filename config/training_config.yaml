@@ -1,0 +1,108 @@
+# =============================================================================
+# JurisAI - Training Configuration (QLoRA)
+# =============================================================================
+# Optimized for: RTX 3050 4GB VRAM + 64GB System RAM
+# Strategy: Aggressive VRAM optimization, leverage system RAM for data
+# =============================================================================
+
+# LoRA (Low-Rank Adaptation) Configuration
+lora:
+  r: 16                          # LoRA rank (16 for 4GB VRAM; upgrade to 32 with more VRAM)
+  alpha: 32                      # 2x rank (golden rule)
+  dropout: 0.05                  # Small dropout for regularization
+  target_modules:                # All linear layers for maximum adaptation
+    - "q_proj"
+    - "k_proj"
+    - "v_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+  bias: "none"
+  task_type: "CAUSAL_LM"
+  use_gradient_checkpointing: "unsloth"  # Unsloth's optimized gradient checkpointing
+
+# =============================================================================
+# Stage 1: Continual Pretraining
+# =============================================================================
+# Purpose: Adapt model vocabulary to Indian legal jargon
+# Input: Raw legal text (IPC, BNS, Constitution, judgments)
+# Loss: Standard next-token prediction (causal LM)
+# =============================================================================
+pretrain:
+  output_dir: "./models/adapters/pretrain_v1"
+  num_train_epochs: 1
+  per_device_train_batch_size: 1        # Minimum for VRAM savings
+  gradient_accumulation_steps: 8        # Effective batch size = 8
+  learning_rate: 2.0e-4
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.03
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  
+  # Logging & saving
+  logging_steps: 10
+  save_steps: 200
+  save_total_limit: 2
+  
+  # Performance
+  fp16: true
+  bf16: false                           # RTX 3050 doesn't support bf16 well
+  dataloader_num_workers: 2
+  dataloader_pin_memory: true
+  
+  # Dataset
+  max_seq_length: 2048
+  dataset_text_field: "text"
+
+# =============================================================================
+# Stage 2: Instruction Fine-Tuning (SFT)
+# =============================================================================
+# Purpose: Teach the model legal Q&A behavior
+# Input: Formatted instruction pairs (ChatML format)
+# Loss: Completion-only (mask user prompts, train on assistant responses)
+# =============================================================================
+instruct:
+  output_dir: "./models/adapters/instruct_v1"
+  num_train_epochs: 3
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
+  gradient_accumulation_steps: 8        # Effective batch size = 8
+  learning_rate: 2.0e-4
+  lr_scheduler_type: "cosine"
+  warmup_ratio: 0.05
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  
+  # Regularization
+  neftune_noise_alpha: 5               # NEFTune: prevents memorization
+  
+  # Logging & saving
+  logging_steps: 10
+  save_steps: 100
+  save_total_limit: 3
+  eval_strategy: "steps"
+  eval_steps: 50
+  load_best_model_at_end: true
+  metric_for_best_model: "eval_loss"
+  greater_is_better: false
+  
+  # Performance
+  fp16: true
+  bf16: false
+  dataloader_num_workers: 2
+  dataloader_pin_memory: true
+  
+  # Dataset
+  max_seq_length: 2048
+  packing: false                        # Disable packing to save VRAM
+
+# =============================================================================
+# Export settings
+# =============================================================================
+export:
+  merge_adapters: true
+  save_merged: "./models/merged/jurisai-v1"
+  gguf_export: true                     # Export GGUF for Ollama/llama.cpp
+  gguf_quantization: "q4_k_m"          # Good quality/size tradeoff
+  gguf_output: "./models/merged/jurisai-v1.gguf"

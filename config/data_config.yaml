@@ -1,0 +1,78 @@
+# =============================================================================
+# JurisAI - Data Configuration
+# =============================================================================
+
+# Hugging Face datasets to download
+datasets:
+  # Primary instruction dataset - Q&A from IPC, CrPC, Constitution
+  - name: "Techmaestro369/indian-legal-texts-finetuning"
+    split: "train"
+    type: "instruction"
+    local_dir: "./data/raw/huggingface/indian-legal-texts"
+    
+  # Large-scale legal SFT data
+  - name: "Prarabdha/indian-legal-supervised-fine-tuning-data"
+    split: "train"
+    type: "instruction"
+    local_dir: "./data/raw/huggingface/indian-legal-sft"
+
+# Data processing settings
+preprocessing:
+  # Text cleaning
+  remove_html: true
+  normalize_unicode: true
+  min_text_length: 50        # Skip entries shorter than 50 chars
+  max_text_length: 8000      # Truncate extremely long entries
+  remove_duplicates: true
+  
+  # Chunking (for pretraining corpus)
+  chunk_size: 1024           # Tokens per chunk
+  chunk_overlap: 128         # Overlap between chunks
+  
+  # Quality filters
+  min_quality_score: 0.5     # Filter low-quality entries
+  require_legal_keywords: true  # Must contain legal terminology
+
+# Instruction formatting
+instruction_format:
+  template: "chatml"         # Qwen2.5 uses ChatML format
+  system_prompt: |
+    You are JurisAI, an expert AI legal assistant specialized in Indian law. 
+    You provide accurate, well-cited legal information based on Indian statutes, 
+    constitutional provisions, and court judgments.
+    
+    IMPORTANT GUIDELINES:
+    - Always cite the specific section, act, or case you reference
+    - Clearly distinguish between old laws (IPC, CrPC, Indian Evidence Act) and 
+      new laws (BNS, BNSS, BSA) that replaced them on July 1, 2024
+    - Include relevant cross-references when applicable
+    - Add a disclaimer that this is informational only, not legal advice
+    - If unsure, say so rather than fabricating information
+    - Refuse to provide advice on committing illegal acts
+  
+  # Column mappings for different datasets
+  column_mappings:
+    # Maps dataset columns to our standard format
+    default:
+      instruction: "instruction"
+      input: "input"
+      output: "output"
+    alternative:
+      instruction: "question"
+      input: "context"
+      output: "answer"
+
+# Data splits
+splits:
+  train: 0.85
+  validation: 0.10
+  test: 0.05
+  seed: 42
+
+# Paths
+paths:
+  raw_dir: "./data/raw"
+  processed_dir: "./data/processed"
+  pretrain_dir: "./data/processed/pretrain"
+  instruct_dir: "./data/processed/instruct"
+  eval_dir: "./data/evaluation"

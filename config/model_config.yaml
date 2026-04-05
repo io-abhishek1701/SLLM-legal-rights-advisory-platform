@@ -1,0 +1,44 @@
+# =============================================================================
+# JurisAI - Model Configuration
+# =============================================================================
+# Base model: Qwen2.5-1.5B-Instruct (optimized for RTX 3050 4GB VRAM)
+# Switched from 3B to 1.5B due to VRAM constraints.
+# With RAG augmentation (Phase 2), 1.5B performs excellently in domain tasks.
+# =============================================================================
+
+base_model:
+  name: "Qwen/Qwen2.5-1.5B-Instruct"
+  revision: "main"
+  local_dir: "./models/base/qwen2.5-1.5b-instruct"
+  
+  # Model loading settings
+  dtype: "float16"
+  load_in_4bit: true            # 4-bit quantization via bitsandbytes
+  max_seq_length: 2048          # Conservative for 4GB VRAM (expand if stable)
+  trust_remote_code: true
+  
+# Quantization settings (BitsAndBytes NF4)
+quantization:
+  quant_type: "nf4"             # Normalized Float 4-bit
+  compute_dtype: "float16"      # Compute in FP16
+  double_quant: true            # Nested quantization for extra savings
+  
+# Model metadata
+metadata:
+  architecture: "Qwen2"
+  parameters: "1.5B"
+  context_window: 131072        # Native 128K, we use 2048 for training
+  languages: ["en", "hi", "zh"]
+  license: "Apache-2.0"
+  
+# Alternative models (for future hardware upgrades)
+alternatives:
+  - name: "Qwen/Qwen2.5-3B-Instruct"
+    min_vram_gb: 6
+    note: "Upgrade when you get RTX 5060 or better"
+  - name: "microsoft/Phi-3.5-mini-instruct"
+    min_vram_gb: 6
+    note: "Strong reasoning, weaker Hindi"
+  - name: "meta-llama/Llama-3.1-8B-Instruct"
+    min_vram_gb: 10
+    note: "Best quality, needs 10GB+ VRAM"
