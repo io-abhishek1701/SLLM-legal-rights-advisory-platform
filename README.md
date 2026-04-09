@@ -1,4 +1,4 @@
-# JurisAI — sLLM-Powered Legal Advisory Platform for Indian Law
+# sLLM-Powered Legal Advisory Platform for Indian Law
 
 > AI-powered legal assistant specialized in Indian law, built around a fine-tuned small Language Model (sLLM) with RAG and safety guardrails.
 
